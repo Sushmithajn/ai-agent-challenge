@@ -53,7 +53,7 @@ def groq_generate_code(prompt: str, fallback: str) -> str:
         code = code.replace("```python", "").replace("```", "").strip()
         return code or fallback
     except Exception as e:
-        print(f"❌ Groq SDK failed, using fallback template. Error: {e}")
+        print(f" Groq SDK failed, using fallback template. Error: {e}")
         return fallback
 
 # -------- Run pytest ----------
@@ -73,7 +73,7 @@ def ensure_safe_parser(parser_path: Path, bank: str, csv_path: Path):
         if not isinstance(df, pd.DataFrame):
             raise TypeError("parse() did not return DataFrame")
     except Exception as e:
-        print(f"[agent] ⚠️ Safety-net triggered ({e}); rewriting parser.")
+        print(f"[agent] Safety-net triggered ({e}); rewriting parser.")
         parser_path.write_text(SAFE_TEMPLATE.format(bank=bank), encoding="utf-8")
 
 # -------- Auto-create test file ----------
@@ -97,7 +97,7 @@ def test_parse_returns_dataframe():
 def plan_node(state: dict) -> dict:
     bank = state["bank"]
     attempt = state["attempt"]
-    print(f"\n🧭 Planning attempt {attempt} for {bank}...")
+    print(f"\n Planning attempt {attempt} for {bank}...")
 
     data_dir = ROOT / "data" / bank
     csv_path = data_dir / f"{bank}_sample.csv"
@@ -137,7 +137,7 @@ def plan_node(state: dict) -> dict:
 
 def test_node(state: dict) -> dict:
     bank = state["bank"]
-    print(f"🧪 Running pytest for {bank}...")
+    print(f"Running pytest for {bank}...")
     rc, out = run_pytest(bank)
     state.update({"pytest_rc": rc, "pytest_out": out})
     return state
@@ -146,14 +146,14 @@ def test_node(state: dict) -> dict:
 def decide_node(state: dict) -> str:
     attempt = state["attempt"]
     if state.get("pytest_rc", 1) == 0:
-        print(f"✅ Attempt {attempt} succeeded!")
+        print(f" Attempt {attempt} succeeded!")
         return END
     elif attempt >= MAX_ATTEMPTS:
-        print(f"❌ Max attempts ({MAX_ATTEMPTS}) reached. Last output:\n{state['pytest_out']}")
+        print(f" Max attempts ({MAX_ATTEMPTS}) reached. Last output:\n{state['pytest_out']}")
         return END
     else:
         state['attempt'] += 1
-        print(f"🔄 Attempt {state['attempt']} failed. Retrying...")
+        print(f"Attempt {state['attempt']} failed. Retrying...")
         return "plan"
 
 # -------- Main ----------
@@ -171,14 +171,14 @@ def main():
         state = test_node(state)
 
         if state.get("pytest_rc", 1) == 0:
-            print(f"✅ Attempt {state['attempt']} succeeded!")
+            print(f"Attempt {state['attempt']} succeeded!")
             break
         else:
-            print(f"🔄 Attempt {state['attempt']} failed.")
+            print(f"Attempt {state['attempt']} failed.")
             state["attempt"] += 1
 
     if state["attempt"] > MAX_ATTEMPTS:
-        print(f"❌ Max attempts ({MAX_ATTEMPTS}) reached. Last output:\n{state.get('pytest_out')}")
+        print(f"Max attempts ({MAX_ATTEMPTS}) reached. Last output:\n{state.get('pytest_out')}")
 
 if __name__ == '__main__':
     main()
