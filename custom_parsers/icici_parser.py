@@ -1,12 +1,18 @@
+import pdfplumber
 import pandas as pd
 from pathlib import Path
 
 def parse(pdf_path: str) -> pd.DataFrame:
-    csv_path = Path(pdf_path).with_suffix('.csv')
-    if csv_path.exists():
-        return pd.read_csv(csv_path)
-    sample_csv = Path(__file__).parent.parent / 'data' / 'icici' / 'icici_sample.csv'
-    if sample_csv.exists():
-        cols = pd.read_csv(sample_csv, nrows=0).columns
-        return pd.DataFrame(columns=cols)
-    return pd.DataFrame()
+    """Extracts first table from the PDF into a DataFrame."""
+    with pdfplumber.open(pdf_path) as pdf:
+        all_tables = []
+        for page in pdf.pages:
+            tables = page.extract_tables()
+            for t in tables:
+                all_tables.extend(t)
+        if not all_tables:
+            return pd.DataFrame()
+        # assume first row is header
+        headers = all_tables[0]
+        rows = all_tables[1:]
+        return pd.DataFrame(rows, columns=headers)
