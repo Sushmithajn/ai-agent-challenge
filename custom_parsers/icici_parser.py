@@ -15,5 +15,5 @@ def parse(pdf_path: str) -> pd.DataFrame:
         # assume first row is header
         headers = all_tables[0]
         rows = all_tables[1:]
-        return pd.DataFrame(rows, columns=headers)
+        return pd.DataFrame(rows, columns=headers) 
 
