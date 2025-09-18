@@ -38,7 +38,7 @@ python agent.py --target icici
 pytest -q tests/test_icici_parser.py
 
 ## Code run test
-tested for both icici and sbi bank statement
+tested for icici bank statement pdf
 
 ## Screen Recording Demo
 Demo link: https://drive.google.com/file/d/1dfF2wNQJDZlZSrRAk2TDBJlBOiqEGI-g/view?usp=sharing
