@@ -12,9 +12,6 @@ The goal was to build an **autonomous coding agent** that can **write its own pa
 
 did git clone 
 cd ai-agent-challenge
-python -m venv venv
-source venv/bin/activate   
-pip install -r requirements.txt
 
 ## Create and activate virtual environment
 python -m venv venv
@@ -44,6 +41,6 @@ pytest -q tests/test_icici_parser.py
 tested for both icici and sbi bank statement
 
 ## Screen Recording Demo
-Demo link: https://drive.google.com/file/d/1Y4Qlh8bazZHyHCgcRUIft51l8Bd_aDYy/view?usp=drive_link
+Demo link: https://drive.google.com/file/d/1dfF2wNQJDZlZSrRAk2TDBJlBOiqEGI-g/view?usp=sharing
 
 
