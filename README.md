@@ -9,8 +9,8 @@ The goal was to build an **autonomous coding agent** that can **write its own pa
 ## My Approach
 
 ### Clone and Setup
-
 did git clone 
+git clone https://github.com/Sushmithajn/ai-agent-challenge.git
 cd ai-agent-challenge
 
 ## Create and activate virtual environment
@@ -39,6 +39,26 @@ pytest -q tests/test_icici_parser.py
 
 ## Code run test
 tested for icici bank statement pdf
+
+## Agent Design
+
+        ┌───────────────┐
+        │  Plan         │
+        └───────▲───────┘
+                │
+   ┌────────────┴────────────┐
+   │Generate code & run tests│
+   └────────────┬────────────┘
+                │
+        ┌───────▼───────┐
+        │ Observe result│
+        └───────▲───────┘
+                │
+         ┌──────┴───────┐
+         │ Self-correct │ (≤ 3 loops)
+         └──────────────┘
+Plan → Generate code & run tests → Observe result → Self-correct (≤3) → (back to Plan)
+
 
 ## Screen Recording Demo
 Demo link: https://drive.google.com/file/d/1dfF2wNQJDZlZSrRAk2TDBJlBOiqEGI-g/view?usp=sharing
