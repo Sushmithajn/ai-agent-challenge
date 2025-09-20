@@ -26,6 +26,8 @@ pip install -r requirements.txt
 
 ## data file formate
 in data folder the file should named like this 
+
+![Data folder formate](structure.png)
 data/
 ├── icici/
 │   ├── icici_sample.csv
