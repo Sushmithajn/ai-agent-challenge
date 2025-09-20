@@ -43,6 +43,8 @@ tested for icici bank statement pdf
 
 ## Agent Design
 
+![Agent Design Diagram](Diagram.png)
+
      
         ┌───────────────┐
         │  Plan         │
