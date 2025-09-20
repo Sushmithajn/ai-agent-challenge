@@ -44,23 +44,6 @@ tested for icici bank statement pdf
 ## Agent Design
 
 ![Agent Design Diagram](Diagram.png)
-
-     
-        ┌───────────────┐
-        │  Plan         │
-        └───────────────┘
-                │
-   ┌────────────▼────────────┐
-   │Generate code & run tests│
-   └────────────┬────────────┘
-                │
-        ┌───────▼───────┐
-        │ Observe result│
-        └───────▲───────┘
-                │
-         ┌──────┴───────┐
-         │ Self-correct │ (≤ 3 loops)
-         └──────────────┘
          
 Plan → Generate code & run tests → Observe result → Self-correct (≤3) → (back to Plan)
 
