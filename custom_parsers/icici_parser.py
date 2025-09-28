@@ -35,7 +35,5 @@ def parse(pdf_path: str) -> pd.DataFrame:
                 if converted.notna().any():
                     df[col] = converted
             except Exception:
-                continue
-
-
+                continue                
         return df
