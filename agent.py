@@ -1,21 +1,22 @@
-import os, subprocess
+import os, subprocess, sys
 from pathlib import Path
 import pandas as pd
+import numpy as np
 from dotenv import load_dotenv
 from groq import Groq
 
-# Load environment variables
+# --- Configuration & Setup ---
 load_dotenv()
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 MAX_ATTEMPTS = 3
 ROOT = Path(__file__).parent.resolve()
+
 if not GROQ_API_KEY:
     raise RuntimeError("Set GROQ_API_KEY in .env file")
-
 client = Groq(api_key=GROQ_API_KEY)
 
-# Safe fallback parser (clean and minimal)
+# --- Safe Fallback Parser ---
 SAFE_TEMPLATE = """import pdfplumber
 import pandas as pd
 from pathlib import Path
@@ -24,55 +25,50 @@ import numpy as np
 def parse(pdf_path: str) -> pd.DataFrame:
     \"\"\"Extract tables from PDF into DataFrame, normalize blanks to NaN, and convert numeric columns.\"\"\"
     with pdfplumber.open(pdf_path) as pdf:
-        all_tables = []
-        for page in pdf.pages:
-            tables = page.extract_tables()
-            for t in tables:
-                all_tables.extend(t)
+        all_tables = [t for page in pdf.pages for tables in page.extract_tables() for t in tables]
 
-        if not all_tables:
-            return pd.DataFrame()
+        if not all_tables: return pd.DataFrame()
 
         headers = [h.strip() for h in all_tables[0]]
         rows = []
         for row in all_tables[1:]:
-            if not any(cell and cell.strip() for cell in row):
-                continue
-            if [c.strip() for c in row] == headers:
-                continue
-            clean = [c.strip() if c and c.strip() else np.nan for c in row]
-            rows.append(clean)
+            clean_row = [c.strip() if c and c.strip() else np.nan for c in row]
+            
+            # Skip blank rows and header repetitions
+            if not any(cell is not np.nan for cell in clean_row): continue
+            if [str(c).strip() for c in row] == headers: continue
+            
+            rows.append(clean_row)
 
         df = pd.DataFrame(rows, columns=headers)
 
-        # Auto-convert numeric columns using modern approach
         # Auto-convert numeric columns safely
         for col in df.columns:
             try:
                 converted = pd.to_numeric(df[col], errors='coerce')
-                if converted.notna().any():
-                    df[col] = converted
+                if converted.notna().any(): df[col] = converted
             except Exception:
-                continue                
+                continue
         return df
 """
+
+# --- Core Functions ---
 def groq_generate_code(prompt:str, fallback:str)->str:
+    """Generates code using Groq, or returns fallback on failure."""
     try:
         code = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[{"role":"user","content":prompt}],
-            temperature=0.1
+            model=GROQ_MODEL, messages=[{"role":"user","content":prompt}], temperature=0.1
         ).choices[0].message.content
         return code.replace("```python","").replace("```","").strip() or fallback
-    except: 
+    except Exception as e: 
+        print(f"[agent] Groq generation failed: {e}. Using fallback.")
         return fallback
 
 def ensure_safe_parser(parser_path:Path, bank:str, pdf_path:Path):
-    """Check that parse() returns a DataFrame; otherwise, fallback."""
+    """Check that parse() exists and returns a DataFrame; otherwise, fallback."""
     try:
         spec = __import__(f"custom_parsers.{bank}_parser", fromlist=["parse"])
-        df = spec.parse(str(pdf_path))
-        if not isinstance(df, pd.DataFrame): raise TypeError
+        if not isinstance(spec.parse(str(pdf_path)), pd.DataFrame): raise TypeError
     except Exception as e:
         print(f"[agent] Safety-net triggered ({e}), using fallback.")
         parser_path.write_text(SAFE_TEMPLATE, encoding="utf-8")
@@ -98,23 +94,20 @@ def test_parse_matches_csv():
         test_file.write_text(content, encoding="utf-8")
         
 def run_pytest(bank:str):
+    """Runs pytest as a subprocess with explicit path setting."""
     env = os.environ.copy()
-    env['PYTHONPATH'] = str(ROOT) + os.pathsep + env.get('PYTHONPATH', '')
-
-    proc = subprocess.run(
-        ["pytest", f"tests/test_{bank}_parser.py", "--full-trace", "-s"],
-        capture_output=True, text=True, check=False,
-        cwd=ROOT, # Ensure the command is run from the root directory
-        env=env
-    )
+    env['PYTHONPATH'] = str(ROOT) + os.pathsep + env.get('PYTHONPATH', '') # Fix 1
+    command = [sys.executable, "-m", "pytest", f"tests/test_{bank}_parser.py", "--full-trace", "-s"] # Fix 2
+    proc = subprocess.run(command, capture_output=True, text=True, check=False, cwd=ROOT, env=env)
     return proc.returncode, proc.stdout + "\n" + proc.stderr
 
+# --- Agent Flow ---
 def plan_node(state:dict)->dict:
+    """Generates the parser code."""
     bank = state["bank"]; attempt = state["attempt"]
     print(f"\n=== {bank.upper()} | Attempt {attempt} ===\n")
     data_dir = ROOT / "data" / bank
-    csv_path = data_dir / f"{bank}_sample.csv"
-    pdf_path = data_dir / f"{bank}_sample.pdf"
+    csv_path = data_dir / f"{bank}_sample.csv"; pdf_path = data_dir / f"{bank}_sample.pdf"
 
     headers = sample_rows = ""
     if csv_path.exists():
@@ -125,45 +118,25 @@ def plan_node(state:dict)->dict:
     parser_path = parser_dir / f"{bank}_parser.py"; (parser_dir / "__init__.py").touch(exist_ok=True)
 
     if attempt == 1:
-        prompt = f"""
-You are an expert Python developer.
-Write a COMPLETE Python parser function:
-
-def parse(pdf_path: str) -> pandas.DataFrame
-
-Requirements:
-- Use pdfplumber to read all tables from the PDF.
-- Combine tables into a single pandas DataFrame.
-- Column names must match CSV exactly: {headers}
-- Sample expected rows:
-{sample_rows}
-- Filter blank rows or repeated headers.
-- Return cleaned numeric columns where applicable.
-- Provide a clean, ready-to-use Python file (no commentary outside the code).
-"""
+        prompt = f"""You are an expert Python developer. Write a COMPLETE Python parser function: def parse(pdf_path: str) -> pandas.DataFrame. Requirements: - Use pdfplumber to read all tables from the PDF. - Combine tables into a single pandas DataFrame. - Column names must match CSV exactly: {headers}. - Sample expected rows: {sample_rows}. - Filter blank rows or repeated headers. - Return cleaned numeric columns where applicable. - Provide a clean, ready-to-use Python file (no commentary outside the code)."""
     else:
-        prompt = f"""
-Previous attempt failed.
-Previous code:
-{state.get('previous_code','')}
-Pytest output:
-{state.get('test_failure_output','')}
-Provide complete corrected Python code ONLY, ready for execution.
-"""
+        prompt = f"""Previous attempt failed. Previous code: {state.get('previous_code','')}. Pytest output: {state.get('test_failure_output','')}. Provide complete corrected Python code ONLY, ready for execution."""
+    
     code = groq_generate_code(prompt, SAFE_TEMPLATE)
     parser_path.write_text(code, encoding="utf-8")
     ensure_safe_parser(parser_path, bank, pdf_path)
     ensure_test_file(bank, pdf_path)
-
     state.update({"parser_path": parser_path, "pdf_path": pdf_path, "current_code": code})
     return state
 
 def test_node(state:dict)->dict:
+    """Runs the pytest command."""
     rc, out = run_pytest(state["bank"])
     state.update({"pytest_rc": rc, "pytest_out": out})
     return state
 
 def main():
+    """Main execution loop for the agent."""
     import argparse
     parser = argparse.ArgumentParser(); parser.add_argument('--target', required=True)
     args = parser.parse_args()
@@ -171,16 +144,14 @@ def main():
     print(f"\n--- Starting Parser Agent for {state['bank'].upper()} ---\n")
 
     while state["attempt"] <= MAX_ATTEMPTS:
-        state = plan_node(state)
-        state = test_node(state)
+        state = plan_node(state); state = test_node(state)
         if state["pytest_rc"] == 0:
-            print(f"\n✅ {state['bank'].upper()} | Attempt {state['attempt']} succeeded!\n")
-            break
+            print(f"\n✅ {state['bank'].upper()} | Attempt {state['attempt']} succeeded!\n"); break
         else:
             print(f"\n❌ {state['bank'].upper()} | Attempt {state['attempt']} failed.\n")
-            print(f"--- Error Summary (last 500 chars) ---\n{state['pytest_out'][-500:]}\n---------------------------")
-            state["previous_code"] = state["current_code"]
-            state["test_failure_output"] = state["pytest_out"]
+            summary = state['pytest_out'][-500:].split('Traceback:', 1)[-1].strip()
+            print(f"--- Error Summary ---\n{summary}\n---------------------------")
+            state["previous_code"] = state["current_code"]; state["test_failure_output"] = state["pytest_out"]
             state["attempt"] += 1
 
     if state["attempt"] > MAX_ATTEMPTS:
