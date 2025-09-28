@@ -21,7 +21,7 @@ venv\Scripts\activate
 used .env for API keys 
 Groq API key using (GROQ_API_KEY=yourAPIkey)
 
-##Install dependencies
+## Install dependencies
 pip install -r requirements.txt
 
 ## data file formate
