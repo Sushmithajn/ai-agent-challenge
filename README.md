@@ -39,8 +39,14 @@ data/
     └── sbi_sample.pdf
 
 ## Run the Agent
+for icici
 python agent.py --target icici
-pytest -q tests/test_icici_parser.py
+python -m pytest -q tests/test_icici_parser.py
+
+for sbi
+python agent.py --target sbi
+python -m pytest -q tests/test_sbi_parser.py
+
 
 ## Code run test
 tested for icici bank statement pdf
