@@ -98,9 +98,14 @@ def test_parse_matches_csv():
         test_file.write_text(content, encoding="utf-8")
         
 def run_pytest(bank:str):
+    env = os.environ.copy()
+    env['PYTHONPATH'] = str(ROOT) + os.pathsep + env.get('PYTHONPATH', '')
+
     proc = subprocess.run(
         ["pytest", f"tests/test_{bank}_parser.py", "--full-trace", "-s"],
-        capture_output=True, text=True, check=False
+        capture_output=True, text=True, check=False,
+        cwd=ROOT, # Ensure the command is run from the root directory
+        env=env
     )
     return proc.returncode, proc.stdout + "\n" + proc.stderr
 
