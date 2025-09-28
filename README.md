@@ -40,8 +40,8 @@ data/
 
 ## Run the Agent
 for icici
-python agent.py --target icici
-python -m pytest -q tests/test_icici_parser.py
+python agent.py --target icici\n
+python -m pytest -q tests/test_icici_parser.py\n
 
 for sbi
 python agent.py --target sbi
