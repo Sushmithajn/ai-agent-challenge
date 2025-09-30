@@ -19,7 +19,7 @@ venv\Scripts\activate
 
 ## .env used for API key
 used .env for API keys 
-Groq API key using (GROQ_API_KEY=yourAPIkey)
+I used Groq API key (GROQ_API_KEY=yourAPIkey)
 
 ## Install dependencies
 pip install -r requirements.txt
